@@ -1,18 +1,22 @@
 package ryancheng.bus.adapter;
 
 import android.content.Context;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.bignerdranch.expandablerecyclerview.Adapter.ExpandableRecyclerAdapter;
+import com.bignerdranch.expandablerecyclerview.Model.ParentObject;
+import com.bignerdranch.expandablerecyclerview.ViewHolder.ChildViewHolder;
+import com.bignerdranch.expandablerecyclerview.ViewHolder.ParentViewHolder;
+
+import java.util.ArrayList;
 import java.util.List;
 
+import butterknife.Bind;
 import butterknife.ButterKnife;
-import butterknife.InjectView;
-import butterknife.OnClick;
 import de.greenrobot.event.EventBus;
 import ryancheng.bus.R;
 import ryancheng.bus.event.GetStationDetailEvent;
@@ -23,75 +27,82 @@ import ryancheng.bus.model.Station;
  * Administrator
  * 2015/5/31 0031.
  */
-public class DetailAdapter extends RecyclerView.Adapter<DetailAdapter.StationVH> {
-    private List<Station> data;
+public class DetailAdapter extends ExpandableRecyclerAdapter<DetailAdapter.StationViewHolder,
+        DetailAdapter.DetailViewHolder> {
     private Context context;
 
-    public DetailAdapter(Context context, List<Station> data) {
+    public DetailAdapter(Context context, List<ParentObject> data) {
+        super(context, data);
         this.context = context;
-        this.data = data;
     }
 
     @Override
-    public StationVH onCreateViewHolder(ViewGroup parent, int viewType) {
+    public StationViewHolder onCreateParentViewHolder(ViewGroup viewGroup) {
         View rootView = LayoutInflater.from(context).inflate(
-                R.layout.layout_station, parent, false);
-        return new StationVH(rootView);
+                R.layout.layout_detail_item_parent, viewGroup, false);
+        return new StationViewHolder(rootView);
     }
 
     @Override
-    public void onBindViewHolder(StationVH holder, int position) {
-        holder.station = data.get(position);
-        holder.stationNameView.setText(holder.station.name);
-        if (holder.station.lines != null) {
-            holder.stationDetailView.setVisibility(View.VISIBLE);
-            StringBuilder sb = new StringBuilder();
-            for (Line line : holder.station.lines) {
-                String time;
-                if (TextUtils.isDigitsOnly(line.time)) {
-                    time = String.valueOf(Integer.valueOf(line.time) / 60);
-                } else {
-                    time = line.time;
-                }
-                String s = context.getString(R.string.line_detail, line.terminal, line.stopdis, time);
-                sb.append(s).append('\n');
-            }
-            holder.stationDetailView.setText(sb.toString());
+    public DetailViewHolder onCreateChildViewHolder(ViewGroup viewGroup) {
+        View rootView = LayoutInflater.from(context).inflate(
+                R.layout.layout_detail_item_child, viewGroup, false);
+        return new DetailViewHolder(rootView);
+    }
+
+    @Override
+    public void onBindParentViewHolder(StationViewHolder stationViewHolder, int i, Object o) {
+        stationViewHolder.station = (Station) o;
+        stationViewHolder.mTitleTextView.setText(stationViewHolder.station.name);
+    }
+
+    @Override
+    public void onBindChildViewHolder(DetailViewHolder detailViewHolder, int i, Object o) {
+        Line line = (Line) o;
+        String time;
+        if (TextUtils.isDigitsOnly(line.time)) {
+            time = String.valueOf(Integer.valueOf(line.time) / 60);
         } else {
-            holder.stationDetailView.setVisibility(View.GONE);
-            holder.stationDetailView.setText(null);
+            time = line.time;
         }
+        String s = context.getString(R.string.line_detail, line.terminal, line.stopdis, time);
+        detailViewHolder.mTextView.setText(s);
     }
 
     @Override
-    public int getItemCount() {
-        return data.size();
+    public void onParentItemClickListener(int position) {
+        if(mItemList.get(position) instanceof Station) {
+            Station station = (Station)mItemList.get(position);
+            EventBus.getDefault().post(new GetStationDetailEvent(position, station));
+        }
     }
 
-    public void updateItem(int position, List<Line> lines) {
-        data.get(position).lines = lines;
-        notifyItemChanged(position);
+    public void updateItem(int position, Station station, List<Line> lines) {
+        List<Object> data = new ArrayList<>();
+        data.addAll(lines);
+        station.setChildObjectList(data);
+        super.onParentItemClickListener(position);
     }
 
-    static class StationVH extends RecyclerView.ViewHolder {
+    public static class StationViewHolder extends ParentViewHolder {
+        @Bind(R.id.parent_list_item_title_text_view)
+        TextView mTitleTextView;
         Station station;
-        @InjectView(R.id.tv_station_name)
-        TextView stationNameView;
-        @InjectView(R.id.tv_station_detail)
-        TextView stationDetailView;
 
-        @OnClick(R.id.rl_station)
-        void viewStation() {
-            if (stationDetailView.getVisibility() == View.VISIBLE) {
-                stationDetailView.setVisibility(View.GONE);
-            } else {
-                EventBus.getDefault().post(new GetStationDetailEvent(station));
-            }
-        }
-
-        public StationVH(View itemView) {
+        public StationViewHolder(View itemView) {
             super(itemView);
-            ButterKnife.inject(this, itemView);
+            ButterKnife.bind(this, itemView);
         }
     }
+
+    public static class DetailViewHolder extends ChildViewHolder {
+        @Bind(R.id.child_list_item_text_view)
+        TextView mTextView;
+
+        public DetailViewHolder(View itemView) {
+            super(itemView);
+            ButterKnife.bind(this, itemView);
+        }
+    }
+
 }

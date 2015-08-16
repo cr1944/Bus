@@ -1,10 +1,10 @@
 <resources xmlns:xliff="http://schemas.android.com/apk/res/android">
     <string name="app_name">上海实时公交查询</string>
     <string name="action_settings">设置</string>
-    <string name="search_bus_hint">请输入公交线路（如：188路）</string>
-    <string name="my_favorite_lines">已收藏的线路：</string>
-    <string name="no_favorite_lines">暂无收藏</string>
-    <string name="empty_search">请输入线路查询</string>
+    <string name="action_search">搜索</string>
+    <string name="search_hint">输入公交线路搜索</string>
+    <string name="add_favorite">已收藏<xliff:g>%s</xliff:g></string>
+    <string name="remove_favorite">已取消收藏<xliff:g>%s</xliff:g></string>
     <string name="line_error">公交路线错误，或尚无该线路数据</string>
     <string name="line_detail"><xliff:g>%s</xliff:g>，还有<xliff:g>%s</xliff:g>站，约<xliff:g>%s</xliff:g>分钟</string>
 </resources>

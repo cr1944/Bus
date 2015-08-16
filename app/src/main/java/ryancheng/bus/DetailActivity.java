@@ -1,22 +1,25 @@
 package ryancheng.bus;
 
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.support.design.widget.CollapsingToolbarLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.View;
 
+import com.bignerdranch.expandablerecyclerview.Model.ParentObject;
+import com.pnikosis.materialishprogress.ProgressWheel;
+
+import java.util.ArrayList;
 import java.util.List;
 
+import butterknife.Bind;
 import butterknife.ButterKnife;
-import butterknife.InjectView;
 import de.greenrobot.event.EventBus;
 import rx.Observable;
 import rx.Subscriber;
@@ -34,14 +37,10 @@ public class DetailActivity extends AppCompatActivity {
     public static final String EXTRA_SID = "sid";
     public static final String EXTRA_NAME = "name";
 
-    @InjectView(R.id.rv_line_detail)
+    @Bind(R.id.rv_line_detail)
     RecyclerView detailView;
-    @InjectView(R.id.toolbar)
-    Toolbar toolbar;
-    @InjectView(R.id.toolbarlayout)
-    CollapsingToolbarLayout toolbarLayout;
-    @InjectView(R.id.line_info)
-    TextView lineInfoView;
+    @Bind(R.id.progress_wheel)
+    ProgressWheel progressWheel;
     private DetailAdapter detailAdapter;
     private int stoptype;
     private String sid;
@@ -53,13 +52,13 @@ public class DetailActivity extends AppCompatActivity {
         sid = intent.getStringExtra(EXTRA_SID);
         String title = intent.getStringExtra(EXTRA_NAME);
         setContentView(R.layout.activity_detail);
-        ButterKnife.inject(this);
+        setTitle(title);
+        if (getSupportActionBar() != null)
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        ButterKnife.bind(this);
         EventBus.getDefault().register(this);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         detailView.setLayoutManager(linearLayoutManager);
-        toolbar.setNavigationIcon(R.drawable.abc_ic_ab_back_mtrl_am_alpha);
-        toolbarLayout.setTitle(title);
-        setSupportActionBar(toolbar);
         rxStations();
     }
 
@@ -70,42 +69,58 @@ public class DetailActivity extends AppCompatActivity {
                 .subscribe(new Subscriber<List<Station>>() {
                     @Override
                     public void onCompleted() {
-
                     }
 
                     @Override
                     public void onError(Throwable e) {
-                        Toast.makeText(DetailActivity.this, R.string.line_error, Toast.LENGTH_SHORT).show();
+                        progressWheel.setVisibility(View.GONE);
+                        showErrorDialog(R.string.line_error);
                     }
 
                     @Override
                     public void onNext(List<Station> stations) {
+                        progressWheel.setVisibility(View.GONE);
                         if (stations == null) {
-                            Toast.makeText(DetailActivity.this, R.string.line_error, Toast.LENGTH_SHORT).show();
+                            showErrorDialog(R.string.line_error);
                         } else {
-                            detailAdapter = new DetailAdapter(DetailActivity.this, stations);
+                            List<ParentObject> data = new ArrayList<>();
+                            data.addAll(stations);
+                            detailAdapter = new DetailAdapter(DetailActivity.this, data);
+                            detailAdapter.setCustomParentAnimationViewId(R.id.parent_list_item_expand_arrow);
+                            detailAdapter.setParentClickableViewAnimationDefaultDuration();
+                            detailAdapter.setParentAndIconExpandOnClick(true);
                             detailView.setAdapter(detailAdapter);
-                            lineInfoView.setText(stations.get(0).name + "->"
-                                    + stations.get(stations.size() - 1).name);
                         }
                     }
                 });
     }
 
-    public void onEvent(GetStationDetailEvent event) {
-        rxStationDetail(event.station.stopid);
+    private void showErrorDialog(int message) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.line_error)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                }).create().show();
     }
 
-    private void rxStationDetail(final int stopid) {
+    public void onEvent(GetStationDetailEvent event) {
+        rxStationDetail(event.position, event.station);
+    }
+
+    private void rxStationDetail(final int position, final Station station) {
         Observable<List<Line>> listObservable = APIManager.getInstance()
-                .getStationDetail(stoptype, stopid, sid);
+                .getStationDetail(stoptype, station.stopid, sid);
         listObservable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<List<Line>>() {
                     @Override
                     public void call(List<Line> lines) {
                         if (lines != null) {
-                            detailAdapter.updateItem(stopid - 1, lines);
+                            detailAdapter.updateItem(position, station, lines);
                         }
                     }
                 }, new Action1<Throwable>() {
@@ -123,17 +138,11 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_detail, menu);
-        return true;
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == android.R.id.home) {
+            finish();
             return true;
         }
 

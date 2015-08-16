@@ -8,8 +8,10 @@ import ryancheng.bus.model.Station;
  */
 public class GetStationDetailEvent {
     public Station station;
+    public int position;
 
-    public GetStationDetailEvent(Station station) {
+    public GetStationDetailEvent(int position, Station station) {
+        this.position = position;
         this.station = station;
     }
 }

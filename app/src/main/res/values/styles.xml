@@ -9,7 +9,6 @@
     <style name="MySearchViewStyle" parent="Widget.AppCompat.SearchView">
     </style>
     <style name="AppTheme.Detail">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+        <item name="android:actionBarStyle">@style/Widget.AppCompat.Light.ActionBar.Solid</item>
     </style>
 </resources>
